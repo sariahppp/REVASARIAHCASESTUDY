@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CODE BLUE: Same Patient, Different Floor</title>
+<style>
+:root{
+  --bg:#07111f; --panel:#0e1d31; --panel2:#13263d; --text:#edf5ff;
+  --muted:#a9bdd3; --accent:#5ee7c5; --accent2:#76a9ff; --danger:#ff6b7a;
+  --gold:#ffd166; --line:#27415f; --good:#62e88f;
+}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(circle at 80% 0%,#18375b 0,#07111f 45%);color:var(--text);
+font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;min-height:100vh}
+.app{min-height:100vh;display:flex;flex-direction:column}
+.top{height:72px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 34px;
+background:rgba(7,17,31,.88);backdrop-filter:blur(10px);position:sticky;top:0;z-index:10}
+.logo{font-weight:900;letter-spacing:1.5px}.logo span{color:var(--accent)}
+.counter{color:var(--muted);font-size:14px}.score{color:var(--gold);font-weight:800;margin-left:18px}
+main{flex:1;display:flex;align-items:center;justify-content:center;padding:34px}
+.deck{width:min(1120px,100%);min-height:680px;background:linear-gradient(145deg,rgba(19,38,61,.98),rgba(9,22,38,.98));
+border:1px solid var(--line);border-radius:28px;box-shadow:0 25px 80px rgba(0,0,0,.38);overflow:hidden;position:relative}
+.slide{display:none;padding:52px 62px;min-height:680px;animation:in .3s ease}.slide.active{display:block}
+@keyframes in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.kicker{font-size:12px;letter-spacing:2.2px;text-transform:uppercase;color:var(--accent);font-weight:800}
+h1{font-size:clamp(42px,6vw,76px);line-height:.98;margin:16px 0 20px;letter-spacing:-3px}
+h2{font-size:42px;line-height:1.05;margin:12px 0 20px;letter-spacing:-1.5px}
+h3{font-size:23px;margin:0 0 10px} p{font-size:18px;line-height:1.6;color:#d7e4f1}
+.subtitle{max-width:760px;font-size:21px;color:var(--muted)}
+.badge{display:inline-flex;align-items:center;gap:8px;border:1px solid #315271;background:#0b1b2e;border-radius:999px;padding:8px 13px;font-size:13px;color:#c8d8e9}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.card{background:rgba(10,26,44,.85);border:1px solid var(--line);border-radius:18px;padding:22px}
+.card strong{color:white}.small{font-size:14px;color:var(--muted);line-height:1.5}
+.vitals{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:24px 0}
+.vital{background:#08182a;border:1px solid #2b4662;border-radius:14px;padding:15px;text-align:center}
+.vital b{display:block;font-size:25px;margin-top:5px}.vital span{font-size:11px;color:var(--muted);text-transform:uppercase}
+.alert{border-left:4px solid var(--danger);background:rgba(255,107,122,.09);padding:17px 20px;border-radius:10px;margin:20px 0}
+.good{border-left:4px solid var(--good);background:rgba(98,232,143,.08);padding:17px 20px;border-radius:10px}
+.buttons{display:grid;gap:12px;margin-top:20px}.choice{border:1px solid #345474;background:#0b1d32;color:var(--text);padding:16px 18px;border-radius:13px;text-align:left;
+font-size:16px;cursor:pointer;transition:.18s}.choice:hover{transform:translateX(4px);border-color:var(--accent);background:#102844}
+.choice.correct{border-color:var(--good);background:rgba(98,232,143,.12)}.choice.wrong{border-color:var(--danger);background:rgba(255,107,122,.12)}
+.feedback{display:none;margin-top:15px;padding:16px;border-radius:13px;background:#08182a;border:1px solid var(--line);line-height:1.5}
+.feedback.show{display:block}.answer{font-weight:800;color:var(--accent)}
+.progress{height:4px;background:#10243a}.progress i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));width:0}
+.nav{position:absolute;bottom:0;left:0;right:0;height:66px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;padding:0 28px;background:rgba(6,17,30,.8)}
+.nav button,.primary{border:1px solid #365775;background:#10253c;color:white;padding:10px 17px;border-radius:10px;cursor:pointer;font-weight:700}
+.primary{background:var(--accent);color:#06131f;border-color:var(--accent)}button:disabled{opacity:.4;cursor:not-allowed}
+.center{text-align:center}.big-icon{font-size:82px;margin-bottom:5px}.timeline{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:25px}
+.timeline .side{border-radius:18px;padding:25px;border:1px solid var(--line)}.icu{border-top:4px solid var(--danger)}.step{border-top:4px solid var(--accent2)}
+ul{line-height:1.9;color:#d7e4f1;font-size:17px}.tag{display:inline-block;padding:5px 9px;border-radius:7px;background:#18334f;color:#cfe4fa;font-size:12px;margin:3px}
+.match{display:grid;grid-template-columns:1fr 1fr;gap:12px}.match button{text-align:center}.match .selected{outline:2px solid var(--accent)}.match .matched{opacity:.45;pointer-events:none}
+.footer-note{font-size:12px;color:#7f9ab5;margin-top:20px}.scorebox{font-size:26px;font-weight:900;color:var(--gold)}
+.reveal{margin-top:18px;padding:18px;border:1px dashed #496b8d;border-radius:14px;background:#09192b}
+@media(max-width:760px){.top{padding:0 15px}.slide{padding:34px 25px;min-height:730px}.grid,.grid3,.timeline,.match{grid-template-columns:1fr}.vitals{grid-template-columns:repeat(2,1fr)}h1{font-size:46px}h2{font-size:34px}}
+</style>
+</head>
+<body>
+<div class="app">
+<header class="top">
+  <div class="logo">NURSING<span>//</span>LAB</div>
+  <div><span class="counter" id="counter"></span><span class="score">SCORE: <b id="score">0</b></span></div>
+</header>
+<div class="progress"><i id="bar"></i></div>
+<main><section class="deck" id="deck">
+
+<!-- 1 -->
+<article class="slide active">
+<div class="kicker">Comparative Case Study • Interactive Simulation</div>
+<div class="big-icon">🫀</div>
+<h1>CODE BLUE:<br><span style="color:var(--accent)">Same Patient.</span><br>Different Floor.</h1>
+<p class="subtitle">A nursing-care comparison: <b>Acute Myocardial Infarction</b> in the ICU vs. the Step-Down Unit.</p>
+<div style="margin-top:28px"><span class="badge">👩‍⚕️ YOU ARE THE NURSE</span> <span class="badge">🎯 8 DECISIONS</span> <span class="badge">🧠 PRACTICE + PRIORITIES</span></div>
+<p class="footer-note">Class challenge: make the safest nursing decision before the timer in your head runs out.</p>
+</article>
+
+<!-- 2 -->
+<article class="slide">
+<div class="kicker">Case File 001</div><h2>Meet Mr. Carter.</h2>
+<div class="grid">
+<div class="card">
+<h3>James Carter • 58 years old</h3>
+<p>Mr. Carter arrives in the ED reporting <b>crushing substernal chest pain</b> that began 35 minutes ago while climbing stairs.</p>
+<span class="tag">Acute MI / STEMI</span><span class="tag">Chest pain 8/10</span><span class="tag">Diaphoresis</span>
+</div>
+<div class="card">
+<h3>Initial snapshot</h3>
+<div class="vitals">
+<div class="vital"><span>HR</span><b>104</b></div><div class="vital"><span>BP</span><b>156/94</b></div>
+<div class="vital"><span>RR</span><b>22</b></div><div class="vital"><span>SpO₂</span><b>94%</b></div>
+<div class="vital"><span>Pain</span><b>8/10</b></div>
+</div>
+</div></div>
+<div class="alert"><b>ECG:</b> ST-segment elevation noted. The team is preparing for emergent reperfusion therapy.</div>
+<p><b>Your mission:</b> Compare what nursing care looks like when this patient is unstable in the ICU versus when he is stabilizing in step-down.</p>
+</article>
+
+<!-- 3 -->
+<article class="slide">
+<div class="kicker">Decision 01 • Priority Setting</div>
+<h2>You're first at the bedside.</h2>
+<p>Mr. Carter says, “The pain is getting worse.” What is your <b>priority nursing action?</b></p>
+<div class="buttons">
+<button class="choice" onclick="answer(this,false,'A pain score matters, but a worsening chest-pain complaint requires immediate focused assessment and rapid escalation based on findings.')">A. Document the pain and reassess in 30 minutes.</button>
+<button class="choice" onclick="answer(this,true,'Correct. Start with immediate assessment: airway, breathing, circulation, vital signs, pain, rhythm and signs of deterioration while activating the appropriate emergency response/orders.')">B. Immediately assess ABCs, vital signs, cardiac rhythm and symptoms, then escalate per protocol/orders.</button>
+<button class="choice" onclick="answer(this,false,'Medication administration may be part of treatment, but the nurse must first assess the patient and verify the current clinical picture.')">C. Give every ordered medication before doing another assessment.</button>
+<button class="choice" onclick="answer(this,false,'Waiting is unsafe with worsening chest pain in an acute MI.')">D. Ask the patient to rest and see whether it passes.</button>
+</div><div id="fb1" class="feedback"></div>
+</article>
+
+<!-- 4 -->
+<article class="slide">
+<div class="kicker">ICU • The high-acuity zone</div><h2>Mr. Carter enters the ICU.</h2>
+<div class="grid3">
+<div class="card"><h3>👀 Assess</h3><p class="small">Frequent focused cardiovascular and respiratory assessments; monitor pain, perfusion, mental status and vital signs.</p></div>
+<div class="card"><h3>📈 Monitor</h3><p class="small">Continuous cardiac rhythm monitoring and close observation for dysrhythmias, ischemia and hemodynamic instability.</p></div>
+<div class="card"><h3>💊 Intervene</h3><p class="small">Administer and monitor ordered therapies, assess response, watch for adverse effects and communicate changes rapidly.</p></div>
+</div>
+<div class="alert"><b>ICU mindset:</b> “What could kill this patient in the next few minutes—and how will I recognize it early?”</div>
+<p><b>Key point:</b> The diagnosis has not changed. The <i>intensity and immediacy</i> of nursing surveillance have.</p>
+</article>
+
+<!-- 5 -->
+<article class="slide">
+<div class="kicker">Decision 02 • Deterioration</div><h2>🚨 Something changed.</h2>
+<div class="vitals">
+<div class="vital"><span>HR</span><b>118</b></div><div class="vital"><span>BP</span><b>88/56</b></div>
+<div class="vital"><span>RR</span><b>24</b></div><div class="vital"><span>SpO₂</span><b>91%</b></div>
+<div class="vital"><span>Pain</span><b>6/10</b></div>
+</div>
+<p>Mr. Carter reports new chest discomfort and feels “lightheaded.” What is the <b>best next nursing response?</b></p>
+<div class="buttons">
+<button class="choice" onclick="answer(this,false,'Do not wait for the next scheduled assessment. The change in blood pressure, symptoms and oxygenation needs prompt attention.')">A. Wait until the next routine vital-sign check.</button>
+<button class="choice" onclick="answer(this,true,'Correct. Reassess immediately, evaluate rhythm/oxygenation/perfusion, maintain safety and promptly notify/escalate according to the patient’s condition and protocol.')">B. Reassess immediately, assess rhythm/oxygenation/perfusion, ensure safety, and escalate promptly.</button>
+<button class="choice" onclick="answer(this,false,'A single vital sign should not be treated in isolation. The whole clinical picture needs immediate assessment.')">C. Focus only on the oxygen saturation.</button>
+<button class="choice" onclick="answer(this,false,'Ambulation is unsafe with hypotension and new symptoms.')">D. Help him walk to the bathroom to see if movement improves his symptoms.</button>
+</div><div id="fb2" class="feedback"></div>
+</article>
+
+<!-- 6 -->
+<article class="slide">
+<div class="kicker">The plot twist</div><h2>He stabilizes. 🎉</h2>
+<p>After treatment and close monitoring, Mr. Carter is hemodynamically stable. His pain is controlled, rhythm is stable, and he no longer needs ICU-level care.</p>
+<div class="good"><b>TRANSFER:</b> ICU → Step-Down Unit</div>
+<div class="timeline">
+<div class="side icu"><h3>🔴 ICU question</h3><p>“Is this patient becoming unstable <b>right now</b>?”</p></div>
+<div class="side step"><h3>🔵 Step-down question</h3><p>“Is this patient continuing to recover <b>safely</b>, and what does he need to go home prepared?”</p></div>
+</div>
+<p class="footer-note">Important: exact monitoring frequency and interventions depend on the patient, orders, facility policy, and level of acuity.</p>
+</article>
+
+<!-- 7 -->
+<article class="slide">
+<div class="kicker">ICU vs. Step-Down</div><h2>Same disease. Different nursing priorities.</h2>
+<div class="timeline">
+<div class="side icu"><h3>🔴 ICU</h3>
+<ul><li>High-frequency assessment</li><li>Continuous/intensive monitoring</li><li>Rapid recognition of deterioration</li><li>Hemodynamic stability</li><li>Complex therapies and immediate response</li><li>Preventing life-threatening complications</li></ul></div>
+<div class="side step"><h3>🔵 Step-Down</h3>
+<ul><li>Ongoing cardiac/clinical monitoring</li><li>Less intensive than ICU</li><li>Trend recovery and detect changes</li><li>Medication transition/management</li><li>Mobility and activity progression</li><li>Education + discharge preparation</li></ul></div>
+</div>
+</article>
+
+<!-- 8 -->
+<article class="slide">
+<div class="kicker">Decision 03 • Setting</div><h2>Where does this belong?</h2>
+<p>Choose the setting that most strongly fits the situation. <b>ICU, Step-Down, or Both?</b></p>
+<div class="buttons">
+<button class="choice" onclick="tri(this,'icu','Continuous intensive surveillance for a patient with hemodynamic instability.')">A. Continuous intensive surveillance for hemodynamic instability.</button>
+<button class="choice" onclick="tri(this,'step','Focused recovery, medication teaching, mobility progression and discharge preparation.')">B. Recovery-focused care and discharge preparation.</button>
+<button class="choice" onclick="tri(this,'both','Assessment, medication safety, cardiac monitoring as ordered, patient safety and communication matter in both settings.')">C. Assessment, medication safety, monitoring and communication.</button>
+</div><div id="fb3" class="feedback"></div>
+</article>
+
+<!-- 9 -->
+<article class="slide">
+<div class="kicker">Medication Match • Decision 04</div><h2>Match the medication to the purpose.</h2>
+<p>Pick the best purpose for each medication. One correct answer per row.</p>
+<div class="card" style="margin-bottom:12px"><b>Aspirin</b><div class="buttons">
+<button class="choice" onclick="med(this,true,'Helps reduce platelet aggregation and is a key antiplatelet therapy in acute coronary syndrome when appropriate.')">A. Reduce platelet aggregation</button>
+<button class="choice" onclick="med(this,false,'Not the primary purpose of aspirin in acute MI.')">B. Increase heart rate</button></div></div>
+<div class="card" style="margin-bottom:12px"><b>Beta blocker</b><div class="buttons">
+<button class="choice" onclick="med(this,true,'Beta blockers can reduce heart rate, blood pressure and myocardial oxygen demand when appropriate and not contraindicated.')">A. Reduce cardiac workload</button>
+<button class="choice" onclick="med(this,false,'That is not the therapeutic goal of a beta blocker.')">B. Increase myocardial oxygen demand</button></div></div>
+<div class="card"><b>Statin</b><div class="buttons">
+<button class="choice" onclick="med(this,false,'This is not the main long-term purpose of statin therapy.')">A. Treat acute pain immediately</button>
+<button class="choice" onclick="med(this,true,'Statins reduce LDL cholesterol and cardiovascular risk as part of secondary prevention.')">B. Lower LDL and reduce cardiovascular risk</button></div></div>
+<div id="fb4" class="feedback"></div>
+</article>
+
+<!-- 10 -->
+<article class="slide">
+<div class="kicker">Decision 05 • Transfer Report</div><h2>SBAR: Don't lose the plot.</h2>
+<p>You are giving report from ICU to step-down. Which information is most important to communicate?</p>
+<div class="buttons">
+<button class="choice" onclick="answer(this,false,'The patient’s favorite TV show is not clinically relevant to the transfer.')">A. His favorite TV show.</button>
+<button class="choice" onclick="answer(this,true,'Correct. Communicate diagnosis, treatment/course, current assessment, trends, medications/therapies, lines, safety concerns, pending orders/results and what the receiving nurse needs to watch for.')">B. Diagnosis, clinical course, current status, therapies/medications, trends, safety concerns and pending care.</button>
+<button class="choice" onclick="answer(this,false,'A complete transfer requires more than the original diagnosis.')">C. Only the diagnosis that brought him to the hospital.</button>
+<button class="choice" onclick="answer(this,false,'Family information can matter, but it cannot replace the clinical handoff.')">D. Only the family’s concerns.</button>
+</div><div id="fb5" class="feedback"></div>
+</article>
+
+<!-- 11 -->
+<article class="slide">
+<div class="kicker">Decision 06 • Discharge Readiness</div><h2>“Can I go home now?”</h2>
+<p>Mr. Carter is stable. Which nursing focus becomes <b>increasingly important</b> in step-down?</p>
+<div class="grid">
+<div class="card"><h3>🧠 Teach-back</h3><p class="small">Can he explain his medications, warning signs, follow-up plan and when to seek help?</p></div>
+<div class="card"><h3>🚶 Recovery</h3><p class="small">Can he safely increase activity according to the plan and manage daily needs?</p></div>
+<div class="card"><h3>💊 Medication safety</h3><p class="small">Does he understand purpose, schedule, precautions and what to do about problems?</p></div>
+<div class="card"><h3>❤️ Secondary prevention</h3><p class="small">Lifestyle changes, risk-factor management, follow-up and cardiac rehabilitation as prescribed.</p></div>
+</div>
+<div class="good"><b>Practice implication:</b> Education is not “extra.” It is part of preventing another event and supporting a safe transition home.</div>
+</article>
+
+<!-- 12 -->
+<article class="slide">
+<div class="kicker">Final Challenge • Decision 07</div><h2>ICU, Step-Down, or Both?</h2>
+<p>Class vote. Then reveal.</p>
+<div class="buttons">
+<button class="choice" onclick="finalChoice(this,'both','Both. Nurses in either setting must assess the patient, administer medications safely, monitor for complications, communicate changes, document care and protect patient safety.')">“Monitor for complications.”</button>
+<button class="choice" onclick="finalChoice(this,'icu','ICU. The emphasis is on immediate recognition and response to severe instability, although monitoring occurs in step-down too.')">“Respond rapidly to severe hemodynamic instability.”</button>
+<button class="choice" onclick="finalChoice(this,'step','Step-down. Recovery, teaching and preparation for discharge become increasingly prominent as stability improves.')">“Prepare the patient for discharge.”</button>
+</div><div id="fb6" class="feedback"></div>
+</article>
+
+<!-- 13 -->
+<article class="slide">
+<div class="kicker">The Takeaway</div><h2>What changes when the floor changes?</h2>
+<div class="grid3">
+<div class="card"><h3>01 • Acuity</h3><p class="small">The patient’s condition determines how intensive nursing surveillance must be.</p></div>
+<div class="card"><h3>02 • Priorities</h3><p class="small">ICU care emphasizes immediate threats; step-down increasingly emphasizes stabilization and recovery.</p></div>
+<div class="card"><h3>03 • Continuity</h3><p class="small">The core nursing process—assess, plan, intervene, evaluate, communicate—continues in both settings.</p></div>
+</div>
+<div class="alert"><b>Big idea:</b> A patient does not stop being a cardiac patient because they changed rooms. What changes is the level of nursing care required to keep them safe.</div>
+</article>
+
+<!-- 14 -->
+<article class="slide">
+<div class="kicker">Practice Implications</div><h2>So what does this mean for us?</h2>
+<ul>
+<li><b>Recognize deterioration early:</b> trends matter, not just single numbers.</li>
+<li><b>Match care to acuity:</b> the setting should support the patient’s current level of risk.</li>
+<li><b>Communicate clearly:</b> transitions are high-risk moments for missed information.</li>
+<li><b>Educate before discharge:</b> use teach-back rather than simply asking, “Do you understand?”</li>
+<li><b>Never work from assumptions:</b> follow current orders, facility policy, scope of practice and the patient’s actual assessment.</li>
+</ul>
+<div class="good"><b>Clinical mindset:</b> “What is happening? What changed? What does my patient need now? What do I need to communicate?”</div>
+</article>
+
+<!-- 15 -->
+<article class="slide center">
+<div class="kicker">Simulation Complete</div>
+<div class="big-icon">🏁</div>
+<h2>Case Closed.</h2>
+<p class="subtitle">Mr. Carter survived the floor change. Now prove you understood the nursing-care change.</p>
+<div class="scorebox">FINAL SCORE: <span id="finalScore">0</span></div>
+<div class="reveal">
+<b>One-sentence takeaway:</b><br>
+The condition may stay the same, but nursing priorities, monitoring intensity, interventions and patient education change with acuity and recovery.
+</div>
+<button class="primary" style="margin-top:25px" onclick="restart()">↻ Restart Simulation</button>
+<p class="footer-note">Educational classroom simulation—not a substitute for facility protocols, provider orders, or clinical judgment.</p>
+</article>
+
+<div class="nav">
+<button id="prev" onclick="move(-1)">← Previous</button>
+<span class="counter" id="navlabel"></span>
+<button id="next" class="primary" onclick="move(1)">Next →</button>
+</div>
+</section></main>
+</div>
+
+<script>
+let current=0, score=0, answered={};
+const slides=[...document.querySelectorAll('.slide')];
+const counter=document.getElementById('counter'), navlabel=document.getElementById('navlabel'), bar=document.getElementById('bar');
+function update(){
+ slides.forEach((s,i)=>s.classList.toggle('active',i===current));
+ counter.textContent=`CASE • ${current+1}/${slides.length}`;
+ navlabel.textContent=`${current+1} / ${slides.length}`;
+ bar.style.width=((current+1)/slides.length*100)+'%';
+ document.getElementById('prev').disabled=current===0;
+ document.getElementById('next').textContent=current===slides.length-1?'Finish':'Next →';
+ document.getElementById('score').textContent=score;
+ document.getElementById('finalScore').textContent=score;
+}
+function move(n){if(current===slides.length-1 && n>0)return;current=Math.max(0,Math.min(slides.length-1,current+n));update()}
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight')move(1);if(e.key==='ArrowLeft')move(-1)});
+function award(key){
+ if(!answered[key]){score++;answered[key]=true;document.getElementById('score').textContent=score}
+}
+function answer(btn,correct,txt){
+ const slide=btn.closest('.slide'), fb=slide.querySelector('.feedback');
+ if(slide.dataset.done)return;
+ slide.dataset.done='1';
+ slide.querySelectorAll('.choice').forEach(b=>b.disabled=true);
+ btn.classList.add(correct?'correct':'wrong');
+ fb.classList.add('show');fb.innerHTML=`<span class="answer">${correct?'✓ CORRECT':'✗ NOT QUITE'}</span><br>${txt}`;
+ if(correct)award('a'+current);
+}
+function tri(btn,type,txt){
+ const correct=(type==='icu'&&btn.textContent.startsWith('A.'))||(type==='step'&&btn.textContent.startsWith('B.'))||(type==='both'&&btn.textContent.startsWith('C.'));
+ answer(btn,correct,txt);
+}
+function med(btn,correct,txt){
+ const slide=btn.closest('.slide'),fb=document.getElementById('fb4');
+ btn.parentElement.querySelectorAll('.choice').forEach(b=>b.disabled=true);
+ btn.classList.add(correct?'correct':'wrong');
+ fb.classList.add('show');fb.innerHTML=`<span class="answer">${correct?'✓ Correct match':'✗ Try again'}</span><br>${txt}`;
+ if(correct)score++,document.getElementById('score').textContent=score;
+}
+function finalChoice(btn,type,txt){
+ const correct=(type==='both'&&btn.textContent.includes('complications'))||
+ (type==='icu'&&btn.textContent.includes('severe hemodynamic'))||
+ (type==='step'&&btn.textContent.includes('discharge'));
+ answer(btn,correct,txt);
+}
+function restart(){
+ current=0;score=0;answered={};
+ slides.forEach(s=>{delete s.dataset.done;s.querySelectorAll('.choice').forEach(b=>{b.disabled=false;b.classList.remove('correct','wrong')});s.querySelectorAll('.feedback').forEach(f=>f.classList.remove('show'))});
+ update();
+}
+update();
+</script>
+</body>
+</html>
